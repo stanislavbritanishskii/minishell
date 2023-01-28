@@ -6,7 +6,7 @@
 /*   By: sbritani <sbritani@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/01/22 17:53:20 by sbritani          #+#    #+#             */
-/*   Updated: 2023/01/25 20:39:22 by sbritani         ###   ########.fr       */
+/*   Updated: 2023/01/28 13:08:54 by sbritani         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,6 +43,7 @@ int cd(char **splitted_input, t_settings *settings)
 	char *temp;
 	if (!splitted_input[1])
 	{
+		settings->last_working_directory = cur_dir();
 		chdir("/");
 		return (0);
 	}
@@ -98,6 +99,25 @@ int	unset(char **splitted_input, t_settings *settings)
 	return (0);
 }
 
+char **split_for_equal_sign(char *str)
+{
+	char	**res;
+	int	i;
+
+	res = malloc(sizeof(char *) * 3);
+	res[2] = NULL;
+	while (str[i] && str[i] != '=')
+		i++;
+	res[0] = str_copy(str, i);
+	res[1] = str_copy(str + i + 1, -1);
+	if (!res[1][0])
+	{
+		free(res[1]);
+		res[1] = NULL;
+	}
+	return (res);
+}
+
 int	export(char **splitted_input, t_settings *settings)
 {
 	int		i;
@@ -106,10 +126,11 @@ int	export(char **splitted_input, t_settings *settings)
 	i = 1;
 	while(splitted_input[i])
 	{
-		temp = ft_split(splitted_input[i], "=\0");
+		temp = split_for_equal_sign(splitted_input[i]);
 		// print_splitted(temp);
 		if (temp[1])
 		{
+			printf("tuta\n");
 			dict_add(settings->env, temp[0], temp[1]);
 			dict_add(settings->exported_env, temp[0], temp[1]);
 		}
@@ -125,6 +146,7 @@ int	export(char **splitted_input, t_settings *settings)
 	return (0);
 }
 
+
 int	deal_with_equal_sign(char **splitted_input, t_settings *settings)
 {
 	int	i;
@@ -132,7 +154,7 @@ int	deal_with_equal_sign(char **splitted_input, t_settings *settings)
 
 	while (splitted_input[i])
 	{
-		temp = ft_split(splitted_input[i], "=\0");
+		temp = split_for_equal_sign(splitted_input[i]);
 		if (temp[1])
 			dict_add(settings->env, temp[0], temp[1]);
 		else
@@ -233,12 +255,18 @@ char	*my_readline(void)
 	return (res);
 }
 
+void	interrupt_input(int sig)
+{
+	rl_redisplay();
+}
+
 void	shell(char *envp[])
 {
 	char *res;
 	t_settings *settings;
 
 	settings = create_setttings(envp);
+	// signal(SIGINT, interrupt_input);
 	settings->last_working_directory = cur_dir();
 	res = my_readline();
 	if (!parse_input(res, settings))

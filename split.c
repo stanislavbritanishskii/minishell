@@ -6,7 +6,7 @@
 /*   By: sbritani <sbritani@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/01/23 19:18:48 by sbritani          #+#    #+#             */
-/*   Updated: 2023/01/25 20:37:25 by sbritani         ###   ########.fr       */
+/*   Updated: 2023/01/28 12:53:46 by sbritani         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,7 @@
 int	is_bash_special_char(char c)
 {
 	int			i;
-	static char	special_chars[] = "'\"$&<>| \0";
+	static char	special_chars[] = "'\"$&<>|= \0";
 
 	i = 0;
 	while (special_chars[i])
@@ -66,10 +66,10 @@ t_next_arg_return	*deal_with_double_quotes(char *input, t_settings *settings)
 	{
 		while (input[i] && input[i] != '"' && input[i] != '$')
 			i++;
-		printf("res->last_index = %d i is %d\n", res->last_index, i);
+		// printf("res->last_index = %d i is %d\n", res->last_index, i);
 		res->arg = ft_str_join_free_both(res->arg, str_copy(input + res->last_index, i - res->last_index));
 		res->last_index = i;
-		printf("before dealing with dollar is %s  %d\n", res->arg, res->last_index);
+		// printf("before dealing with dollar is %s  %d\n", res->arg, res->last_index);
 		if (input[i] == '$')
 		{
 			mid_dollar_res = deal_with_dollar(input + i + 1, settings);
@@ -78,8 +78,8 @@ t_next_arg_return	*deal_with_double_quotes(char *input, t_settings *settings)
 			res->last_index += mid_dollar_res->last_index + 1;
 			free_next_arg_return(mid_dollar_res);
 		}
-		printf("after dealing with dollar is %s  %d\n", res->arg, res->last_index);
-		printf("last index = %d\n", res->last_index);
+		// printf("after dealing with dollar is %s  %d\n", res->arg, res->last_index);
+		// printf("last index = %d\n", res->last_index);
 		if (input[i] == '"')
 			return (res);
 	}
@@ -89,6 +89,26 @@ t_next_arg_return	*deal_with_double_quotes(char *input, t_settings *settings)
 	res->last_index = i;
 	return (res);
 }
+
+t_next_arg_return	*deal_with_single_quotes(char *input, t_settings *settings)
+{
+	int	i;
+	t_next_arg_return	*res;
+	
+	i = 0;
+	res = init_next_arg();
+	while (input[i] && input[i] != '\'')
+		i++;
+	if (!input[i])
+	{
+		res->last_index = i;
+		return (res);
+	}
+	res->arg = str_copy(input, i);
+	res->last_index = i;
+	return (res);
+}
+
 t_next_arg_return *get_next_arg(char *input, t_settings *settings)
 {
 	int	i;
@@ -108,7 +128,7 @@ t_next_arg_return *get_next_arg(char *input, t_settings *settings)
 		res->last_index = i;
 		while(input[i] && input[i] != ' ')
 		{
-			while (input[i] && (!is_bash_special_char(input[i])))
+			while (input[i] && (!is_bash_special_char(input[i])) || input[i] == '=')
 				i++;
 			res->arg = ft_str_join_free_both(res->arg, str_copy(input + res->last_index, i - res->last_index));
 			res->last_index = i;
@@ -117,12 +137,21 @@ t_next_arg_return *get_next_arg(char *input, t_settings *settings)
 				mid_dollar_res = deal_with_dollar(input + i + 1, settings);
 				res->arg = ft_str_join_free_first(res->arg, mid_dollar_res->arg);
 				i += mid_dollar_res->last_index + 1;
-				res->last_index = mid_dollar_res->last_index + 1;
+				res->last_index += mid_dollar_res->last_index + 1;
 				free_next_arg_return(mid_dollar_res);
 			}
 			else if (input[i] == '"')
 			{
 				mid_dollar_res = deal_with_double_quotes(input + i + 1, settings);
+				res->arg = ft_str_join_free_first(res->arg, mid_dollar_res->arg);
+				i += mid_dollar_res->last_index + 2;
+				printf("%d\n", i);
+				res->last_index += mid_dollar_res->last_index + 2;
+				free_next_arg_return(mid_dollar_res);
+			}
+			else if (input[i] == '\'')
+			{
+				mid_dollar_res = deal_with_single_quotes(input + i + 1, settings);
 				res->arg = ft_str_join_free_first(res->arg, mid_dollar_res->arg);
 				i += mid_dollar_res->last_index + 2;
 				printf("%d\n", i);
@@ -143,7 +172,14 @@ t_next_arg_return *get_next_arg(char *input, t_settings *settings)
 	{
 		free_next_arg_return(res);
 		res = deal_with_double_quotes(input + start + 1, settings);
-		res->last_index += start + 1;
+		res->last_index += start + 2;
+	}
+	if(input[start] && input[start] == '\'')
+	{
+		free_next_arg_return(res);
+		res = deal_with_single_quotes(input + start + 1, settings);
+		res->last_index += start + 2;
+		printf("%s\n", res->arg);
 	}
 	return (res);
 	
